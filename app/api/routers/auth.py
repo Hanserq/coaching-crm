@@ -70,6 +70,17 @@ def register_organization(
             detail=f"An organisation with slug '{payload.organization.slug}' already exists.",
         )
 
+    # 1.5 Guard: email must be unique across the entire system
+    existing_user: User | None = db.execute(
+        select(User).where(User.email == payload.admin_user.email)
+    ).scalar_one_or_none()
+
+    if existing_user is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A user with email '{payload.admin_user.email}' already exists.",
+        )
+
     # 2. Create organisation
     org = Organization(
         name=payload.organization.name,
