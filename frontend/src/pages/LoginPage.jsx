@@ -24,11 +24,13 @@ export default function LoginPage() {
         try {
             // 1. Get tokens
             const { data: tokens } = await api.post('/auth/login', form);
-            // Temporarily store access token so the /me call is authenticated
-            useAuthStore.setState({ accessToken: tokens.access_token });
 
             // 2. Fetch the user profile
-            const { data: user } = await api.get('/auth/me');
+            // We temporarily set the token in the headers just for this request
+            // before Zustand finishes saving it
+            const { data: user } = await api.get('/auth/me', {
+                headers: { Authorization: `Bearer ${tokens.access_token}` }
+            });
 
             // 3. Persist full auth state
             setAuth(user, tokens.access_token, tokens.refresh_token);

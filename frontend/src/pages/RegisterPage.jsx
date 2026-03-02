@@ -73,7 +73,18 @@ export default function RegisterPage() {
         } catch (err) {
             console.error('Registration error:', err.response?.data);
             if (err.response?.status === 409) {
-                setError('Organization slug already exists. Please choose another one.');
+                setError('Organization slug or email already exists. Please choose another one.');
+            } else if (err.response?.status === 422) {
+                // Handle Pydantic validation errors gracefully
+                const details = err.response?.data?.detail;
+                if (Array.isArray(details) && details.length > 0) {
+                    // Extract the first validation error message and the field it applies to
+                    const firstError = details[0];
+                    const fieldName = firstError.loc[firstError.loc.length - 1];
+                    setError(`Validation error on '${fieldName}': ${firstError.msg}`);
+                } else {
+                    setError('Invalid input provided. Please check your fields.');
+                }
             } else {
                 setError(err.response?.data?.detail?.[0]?.msg || err.response?.data?.detail || 'Failed to create account. Please check your inputs.');
             }
@@ -136,10 +147,13 @@ export default function RegisterPage() {
                                     value={formData.orgSlug}
                                     onChange={handleSlugChange}
                                     required
+                                    minLength={2}
+                                    maxLength={100}
                                     className="input pl-[76px] h-11"
                                     placeholder="apex-coaching"
                                 />
                             </div>
+                            <p className="text-xs text-surface-500 mt-1">Lowercase letters and hyphens only (min 2 chars)</p>
                         </div>
                     </div>
 
