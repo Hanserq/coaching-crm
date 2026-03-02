@@ -1,0 +1,73 @@
+services:
+
+  # ── PostgreSQL 15 ───────────────────────────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    container_name: ccrm_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-ccrm_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ccrm_secret}
+      POSTGRES_DB:       ${POSTGRES_DB:-coaching_crm}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"        # Expose locally for tools like TablePlus / DBeaver
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ccrm_user} -d ${POSTGRES_DB:-coaching_crm}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── FastAPI application ─────────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime          # Use the final slim stage
+    container_name: ccrm_web
+    restart: unless-stopped
+    env_file:
+      - .env                   # All secrets come from the .env file
+    environment:
+      # Override DATABASE_URL to use the internal Docker network hostname
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ccrm_user}:${POSTGRES_PASSWORD:-ccrm_secret}@db:5432/${POSTGRES_DB:-coaching_crm}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy   # Wait for Postgres health check to pass
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    volumes:
+      # Hot-reload in development: mount source over the image copy
+      - .:/app
+      # Keep the non-root user's home directory writable for caches
+      - /app/__pycache__
+
+  # ── Alembic migration runner (one-shot service) ─────────────────────────────
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: ccrm_migrate
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ccrm_user}:${POSTGRES_PASSWORD:-ccrm_secret}@db:5432/${POSTGRES_DB:-coaching_crm}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["alembic", "upgrade", "head"]
+    # This service exits after migrations run — Docker Compose will not restart it
+    restart: "no"
+
+volumes:
+  postgres_data:
+    driver: local

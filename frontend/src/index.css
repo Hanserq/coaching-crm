@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
+@theme {
+  --color-brand-50:  #f0f4ff;
+  --color-brand-100: #e0e9ff;
+  --color-brand-200: #c7d7fe;
+  --color-brand-300: #a4bcfd;
+  --color-brand-400: #8098fb;
+  --color-brand-500: #6172f3;   /* Primary */
+  --color-brand-600: #4a52e1;
+  --color-brand-700: #3b41c8;
+  --color-brand-800: #3136a2;
+  --color-brand-900: #2d3380;
+  --color-brand-950: #1c1f4a;
+
+  --color-surface-900: #0f1117;  /* App bg */
+  --color-surface-800: #171b26;  /* Sidebar */
+  --color-surface-700: #1e2435;  /* Cards */
+  --color-surface-600: #252c40;  /* Hover states */
+  --color-surface-500: #2e374f;  /* Borders */
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+}
+
+/* ── Base styles ────────────────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { font-family: var(--font-sans); }
+
+  body {
+    background-color: var(--color-surface-900);
+    color: #e2e8f0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--color-surface-800); }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-500);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--color-brand-500); }
+}
+
+/* ── Component utilities ────────────────────────────────────────────────────── */
+@layer components {
+  /* Glass-morphism cards */
+  .card {
+    background-color: var(--color-surface-700);
+    border: 1px solid var(--color-surface-500);
+    border-radius: var(--radius-xl);
+    padding: 1.5rem;
+  }
+
+  /* Primary button */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--color-brand-500);
+    color: #fff;
+    font-weight: 600;
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.5rem;
+    border: none;
+    cursor: pointer;
+    transition: background-color 150ms ease, transform 100ms ease;
+  }
+  .btn-primary:hover    { background-color: var(--color-brand-600); }
+  .btn-primary:active   { transform: scale(0.97); }
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Ghost button */
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: transparent;
+    color: #94a3b8;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+  .btn-ghost:hover {
+    background-color: var(--color-surface-600);
+    color: #e2e8f0;
+  }
+
+  /* Form input */
+  .input {
+    width: 100%;
+    background-color: var(--color-surface-800);
+    border: 1px solid var(--color-surface-500);
+    color: #e2e8f0;
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+  .input::placeholder { color: #475569; }
+  .input:focus {
+    border-color: var(--color-brand-500);
+    box-shadow: 0 0 0 3px rgba(97,114,243,0.2);
+  }
+
+  /* Stat badge pill */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.65rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .badge-green  { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .badge-red    { background: rgba(239,68,68,0.15); color: #f87171; }
+  .badge-yellow { background: rgba(234,179,8,0.15); color: #facc15; }
+  .badge-blue   { background: rgba(59,130,246,0.15); color: #60a5fa; }
+}

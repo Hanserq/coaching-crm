@@ -1,0 +1,21 @@
+# FastAPI & ASGI
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+
+# Database
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10      # 2.9.10+ ships Python 3.13 wheels
+alembic==1.14.0
+
+# Validation & Settings
+pydantic==2.10.6              # 2.10+ supports Python 3.13 natively
+pydantic[email]==2.10.6       # Enables EmailStr via email-validator
+pydantic-settings==2.7.1
+
+# Authentication & Security
+passlib[bcrypt]==1.7.4
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.19
+
+# Utilities
+python-dotenv==1.0.1
