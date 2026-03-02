@@ -6,6 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { lazy, Suspense } from 'react';
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const StudentsPage = lazy(() => import('./pages/StudentsPage'));
 const AttendancePage = lazy(() => import('./pages/AttendancePage'));
@@ -31,6 +32,7 @@ export default function App() {
         <Routes>
           {/* ── Public routes ── */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
           {/* ── Protected routes (require JWT) ── */}
           <Route element={<ProtectedRoute />}>

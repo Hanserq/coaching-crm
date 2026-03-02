@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { GraduationCap, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import api from '../lib/axios';
 import { useAuthStore } from '../store/authStore';
@@ -114,6 +114,13 @@ export default function LoginPage() {
                             )}
                         </button>
                     </form>
+                </div>
+
+                <div className="mt-6 text-center text-sm text-slate-400">
+                    Don't have an account?{' '}
+                    <Link to="/register" className="text-brand-400 font-medium hover:text-brand-300 transition-colors">
+                        Create one
+                    </Link>
                 </div>
             </div>
         </div>
