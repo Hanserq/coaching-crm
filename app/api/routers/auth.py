@@ -17,6 +17,7 @@ from app.models.user import Organization, User, UserRole
 from app.schemas.user import (
     AdminRegisterRequest,
     ChangePasswordRequest,
+    InviteUserRequest,
     LoginRequest,
     ProfileUpdate,
     RefreshTokenRequest,
@@ -234,3 +235,46 @@ def change_password(
     current_user.hashed_password = hash_password(payload.new_password)
     db.add(current_user)
     db.commit()
+
+
+# ── Invite a user to the current organisation ─────────────────────────────
+
+@router.post(
+    "/invite",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Invite a new user (teacher or admin) into the current organisation.",
+)
+def invite_user(
+    payload: InviteUserRequest,
+    db: DBSession,
+    current_user: CurrentUser,
+) -> UserResponse:
+    """
+    Create a new user that belongs to the **same** organisation as the
+    calling admin.  Only admins may call this endpoint.
+    """
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only org admins can invite users.",
+        )
+    # Check for duplicate email
+    existing = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A user with that email already exists.",
+        )
+    new_user = User(
+        full_name=payload.full_name,
+        email=payload.email,
+        hashed_password=hash_password(payload.password),
+        role=payload.role,
+        organization_id=current_user.organization_id,
+        is_active=True,
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return UserResponse.model_validate(new_user)

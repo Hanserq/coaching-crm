@@ -77,6 +77,14 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8, description="New password — will be hashed before storage.")
 
 
+class InviteUserRequest(BaseModel):
+    """Invite another user (teacher or admin) to the current organisation."""
+    full_name: str = Field(..., min_length=1, max_length=255)
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+    role: UserRole = UserRole.TEACHER
+
+
 class UserResponse(_OrmBase):
     """Public representation of a User (no password fields exposed)."""
     id: uuid.UUID
