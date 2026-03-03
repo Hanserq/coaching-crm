@@ -331,21 +331,21 @@ def _send_reset_email(to_email: str, otp: str, user_name: str) -> bool:
     </div>
     """
 
-    payload_data = _json.dumps({{
+    payload_data = _json.dumps({
         "from": _s.RESEND_FROM_EMAIL,
         "to": [to_email],
         "subject": f"Your CoachingCRM reset code: {otp}",
         "html": html_body,
-    }}).encode()
+    }).encode()
 
     try:
         req = urllib.request.Request(
             "https://api.resend.com/emails",
             data=payload_data,
-            headers={{
-                "Authorization": f"Bearer {{_s.RESEND_API_KEY}}",
+            headers={
+                "Authorization": f"Bearer {_s.RESEND_API_KEY}",
                 "Content-Type": "application/json",
-            }},
+            },
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
@@ -358,6 +358,7 @@ def _send_reset_email(to_email: str, otp: str, user_name: str) -> bool:
         import logging
         logging.getLogger(__name__).error("Resend error: %s", e)
         return False
+
 
 
 @router.post("/forgot-password", summary="Generate a 6-digit password-reset OTP.")
