@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Search, Plus, Pencil, Trash2,
     Loader2, AlertCircle, X, ChevronLeft, ChevronRight,
@@ -153,6 +154,8 @@ function StudentModal({ student, onClose, onSaved }) {
 
 // ── Students Page ─────────────────────────────────────────────────────────────
 export default function StudentsPage() {
+    const navigate = useNavigate();
+
     const [students, setStudents] = useState([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -261,11 +264,11 @@ export default function StudentsPage() {
                                 <tr key={s.id} className="hover:bg-gray-50 transition-colors group">
                                     <td className="px-4 py-3.5">
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarColor(s.full_name)} flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm`}>
+                                            <button onClick={() => navigate(`/students/${s.id}`)} className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarColor(s.full_name)} flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm hover:ring-2 hover:ring-brand-400 hover:ring-offset-1 transition-all`}>
                                                 {s.full_name[0].toUpperCase()}
-                                            </div>
+                                            </button>
                                             <div>
-                                                <p className="font-semibold text-gray-800">{s.full_name}</p>
+                                                <button onClick={() => navigate(`/students/${s.id}`)} className="font-semibold text-gray-800 hover:text-brand-600 transition-colors text-left">{s.full_name}</button>
                                                 {s.guardian_name && <p className="text-xs text-gray-400">Parent: {s.guardian_name}</p>}
                                             </div>
                                         </div>

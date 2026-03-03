@@ -9,6 +9,7 @@ const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const StudentsPage = lazy(() => import('./pages/StudentsPage'));
+const StudentProfilePage = lazy(() => import('./pages/StudentProfilePage'));
 const AttendancePage = lazy(() => import('./pages/AttendancePage'));
 const FeesPage = lazy(() => import('./pages/FeesPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -41,6 +42,7 @@ export default function App() {
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/students" element={<StudentsPage />} />
+              <Route path="/students/:id" element={<StudentProfilePage />} />
               <Route path="/attendance" element={<AttendancePage />} />
               <Route path="/fees" element={<FeesPage />} />
               <Route path="/profile" element={<ProfilePage />} />

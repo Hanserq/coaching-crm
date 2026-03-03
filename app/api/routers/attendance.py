@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import calendar
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import Response
@@ -16,9 +17,13 @@ from app.schemas.crm import (
     AttendanceResponse,
     AttendanceUpdate,
     DailyAttendanceResponse,
+    DailyRecord,
+    MonthlyAttendanceSummary,
+    StudentAttendanceStats,
 )
 
 router = APIRouter(prefix="/attendance", tags=["Attendance"])
+
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -252,3 +257,134 @@ def delete_attendance(
     db.delete(record)
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ── Per-student analytics ─────────────────────────────────────────────────────
+
+@router.get(
+    "/student/{student_id}",
+    response_model=list[AttendanceResponse],
+    summary="Get a student's full attendance history.",
+)
+def get_student_attendance(
+    student_id: uuid.UUID,
+    db: DBSession,
+    current_user: CurrentUser,
+    from_date: date | None = Query(None),
+    to_date: date | None = Query(None),
+) -> list[AttendanceResponse]:
+    """Returns all attendance records for a student, with optional date range filters."""
+    _verify_student_belongs_to_org(student_id, current_user.organization_id, db)
+    q = select(Attendance).where(
+        Attendance.student_id == student_id,
+        Attendance.organization_id == current_user.organization_id,
+    )
+    if from_date:
+        q = q.where(Attendance.date >= from_date)
+    if to_date:
+        q = q.where(Attendance.date <= to_date)
+    q = q.order_by(Attendance.date.desc())
+    records = db.execute(q).scalars().all()
+    return [AttendanceResponse.model_validate(r) for r in records]
+
+
+@router.get(
+    "/student/{student_id}/stats",
+    response_model=StudentAttendanceStats,
+    summary="Get full attendance analytics for a single student.",
+)
+def get_student_attendance_stats(
+    student_id: uuid.UUID,
+    db: DBSession,
+    current_user: CurrentUser,
+) -> StudentAttendanceStats:
+    """
+    Returns all-time totals, this-month / this-week breakdowns,
+    6-month monthly breakdown, last-30 records, and a late count
+    for the guardian notification trigger.
+    """
+    _verify_student_belongs_to_org(student_id, current_user.organization_id, db)
+
+    today = date.today()
+    month_start = today.replace(day=1)
+    # start of current ISO week (Monday)
+    week_start = today - timedelta(days=today.weekday())
+
+    all_records = db.execute(
+        select(Attendance).where(
+            Attendance.student_id == student_id,
+            Attendance.organization_id == current_user.organization_id,
+        ).order_by(Attendance.date.desc())
+    ).scalars().all()
+
+    # ── All-time ──────────────────────────────────────────────────────────────
+    total_marked = len(all_records)
+    present_all  = sum(1 for r in all_records if r.status == AttendanceStatus.PRESENT)
+    late_all     = sum(1 for r in all_records if r.status == AttendanceStatus.LATE)
+    absent_all   = sum(1 for r in all_records if r.status == AttendanceStatus.ABSENT)
+    att_pct      = round((present_all + late_all) / total_marked * 100, 1) if total_marked else 0.0
+
+    # ── This month ────────────────────────────────────────────────────────────
+    month_recs = [r for r in all_records if r.date >= month_start]
+    m_present  = sum(1 for r in month_recs if r.status == AttendanceStatus.PRESENT)
+    m_late     = sum(1 for r in month_recs if r.status == AttendanceStatus.LATE)
+    m_absent   = sum(1 for r in month_recs if r.status == AttendanceStatus.ABSENT)
+    m_total    = len(month_recs)
+    m_pct      = round((m_present + m_late) / m_total * 100, 1) if m_total else 0.0
+
+    # ── This week ─────────────────────────────────────────────────────────────
+    week_recs = [r for r in all_records if r.date >= week_start]
+    w_present  = sum(1 for r in week_recs if r.status == AttendanceStatus.PRESENT)
+    w_late     = sum(1 for r in week_recs if r.status == AttendanceStatus.LATE)
+    w_absent   = sum(1 for r in week_recs if r.status == AttendanceStatus.ABSENT)
+    w_total    = len(week_recs)
+    w_pct      = round((w_present + w_late) / w_total * 100, 1) if w_total else 0.0
+
+    # ── 6-month breakdown (oldest first) ─────────────────────────────────────
+    MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    monthly: list[MonthlyAttendanceSummary] = []
+    for offset in range(5, -1, -1):
+        # go back `offset` months from today
+        base = today.replace(day=1)
+        for _ in range(offset):
+            base = (base - timedelta(days=1)).replace(day=1)
+        yr, mo = base.year, base.month
+        last_day = calendar.monthrange(yr, mo)[1]
+        mo_start = date(yr, mo, 1)
+        mo_end   = date(yr, mo, last_day)
+        recs = [r for r in all_records if mo_start <= r.date <= mo_end]
+        p = sum(1 for r in recs if r.status == AttendanceStatus.PRESENT)
+        l = sum(1 for r in recs if r.status == AttendanceStatus.LATE)
+        a = sum(1 for r in recs if r.status == AttendanceStatus.ABSENT)
+        tot = len(recs)
+        pct = round((p + l) / tot * 100, 1) if tot else 0.0
+        monthly.append(MonthlyAttendanceSummary(
+            year=yr, month=mo,
+            month_label=f"{MONTH_NAMES[mo - 1]} {yr}",
+            present=p, late=l, absent=a,
+            total_marked=tot, percentage=pct,
+        ))
+
+    # ── Last 30 records ───────────────────────────────────────────────────────
+    recent = [DailyRecord(id=r.id, date=r.date, status=r.status) for r in all_records[:30]]
+
+    return StudentAttendanceStats(
+        total_marked=total_marked,
+        present=present_all,
+        late=late_all,
+        absent=absent_all,
+        attendance_percentage=att_pct,
+        this_month_present=m_present,
+        this_month_late=m_late,
+        this_month_absent=m_absent,
+        this_month_total=m_total,
+        this_month_percentage=m_pct,
+        this_week_present=w_present,
+        this_week_late=w_late,
+        this_week_absent=w_absent,
+        this_week_total=w_total,
+        this_week_percentage=w_pct,
+        monthly_breakdown=monthly,
+        recent_records=recent,
+        consecutive_late_this_month=m_late,
+    )

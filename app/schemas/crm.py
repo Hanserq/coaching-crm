@@ -185,3 +185,57 @@ class DashboardStats(BaseModel):
     today_present: int
     today_absent: int
     today_late: int
+
+
+# ── Per-student attendance analytics ─────────────────────────────────────────
+
+class MonthlyAttendanceSummary(BaseModel):
+    """Attendance breakdown for a single calendar month."""
+    year: int
+    month: int
+    month_label: str          # e.g. "Mar 2025"
+    present: int
+    late: int
+    absent: int
+    total_marked: int
+    percentage: float         # (present + late) / total_marked * 100
+
+
+class DailyRecord(BaseModel):
+    """Slim attendance record used in the student stats history list."""
+    id: uuid.UUID
+    date: date
+    status: AttendanceStatus
+
+
+class StudentAttendanceStats(BaseModel):
+    """Full analytics payload for the student profile page."""
+    # Basic totals (all-time within org)
+    total_marked: int
+    present: int
+    late: int
+    absent: int
+    attendance_percentage: float   # (present+late) / total_marked * 100
+
+    # Period-specific
+    this_month_present: int
+    this_month_late: int
+    this_month_absent: int
+    this_month_total: int
+    this_month_percentage: float
+
+    this_week_present: int
+    this_week_late: int
+    this_week_absent: int
+    this_week_total: int
+    this_week_percentage: float
+
+    # Monthly breakdown — last 6 months (oldest first)
+    monthly_breakdown: List[MonthlyAttendanceSummary]
+
+    # Last 30 individual records (most-recent first)
+    recent_records: List[DailyRecord]
+
+    # Guardian alert
+    consecutive_late_this_month: int   # for the "notify guardian" trigger
+
