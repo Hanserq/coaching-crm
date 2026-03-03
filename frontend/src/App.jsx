@@ -13,14 +13,20 @@ const StudentProfilePage = lazy(() => import('./pages/StudentProfilePage'));
 const AttendancePage = lazy(() => import('./pages/AttendancePage'));
 const FeesPage = lazy(() => import('./pages/FeesPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const LeadsPage = lazy(() => import('./pages/LeadsPage'));
+const CoursesPage = lazy(() => import('./pages/CoursesPage'));
+const TeachersPage = lazy(() => import('./pages/TeachersPage'));
+const ExamsPage = lazy(() => import('./pages/ExamsPage'));
+const CommunicationPage = lazy(() => import('./pages/CommunicationPage'));
 
 // ── Full-screen loading fallback ──────────────────────────────────────────────
 function PageLoader() {
   return (
-    <div className="flex h-screen items-center justify-center bg-[var(--color-surface-900)]">
+    <div className="flex h-screen items-center justify-center bg-white">
       <div className="flex flex-col items-center gap-4">
         <div className="w-10 h-10 rounded-full border-2 border-brand-500 border-t-transparent animate-spin" />
-        <p className="text-sm text-slate-400">Loading…</p>
+        <p className="text-sm text-gray-400">Loading…</p>
       </div>
     </div>
   );
@@ -45,6 +51,12 @@ export default function App() {
               <Route path="/students/:id" element={<StudentProfilePage />} />
               <Route path="/attendance" element={<AttendancePage />} />
               <Route path="/fees" element={<FeesPage />} />
+              <Route path="/leads" element={<LeadsPage />} />
+              <Route path="/courses" element={<CoursesPage />} />
+              <Route path="/teachers" element={<TeachersPage />} />
+              <Route path="/exams" element={<ExamsPage />} />
+              <Route path="/communication" element={<CommunicationPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
             </Route>
           </Route>

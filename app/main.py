@@ -4,6 +4,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routers import attendance, auth, dashboard, fees, students
+from app.api.routers import settings as settings_router
+from app.api.routers import leads as leads_router
+from app.api.routers import courses as courses_router
+from app.api.routers.exams import exam_router, notice_router
 from app.core.config import settings
 
 # ── App factory ───────────────────────────────────────────────────────────────
@@ -32,11 +36,17 @@ app.add_middleware(
 # ── API Routers (all versioned under /api/v1) ─────────────────────────────────
 _V1 = "/api/v1"
 
-app.include_router(auth.router,       prefix=_V1)
-app.include_router(students.router,   prefix=_V1)
-app.include_router(attendance.router, prefix=_V1)
-app.include_router(fees.router,       prefix=_V1)
-app.include_router(dashboard.router,  prefix=_V1)
+app.include_router(auth.router,              prefix=_V1)
+app.include_router(students.router,          prefix=_V1)
+app.include_router(attendance.router,        prefix=_V1)
+app.include_router(fees.router,              prefix=_V1)
+app.include_router(dashboard.router,         prefix=_V1)
+app.include_router(settings_router.router,   prefix=_V1)
+app.include_router(leads_router.router,      prefix=_V1)
+app.include_router(courses_router.router,    prefix=_V1)
+app.include_router(exam_router,              prefix=_V1)
+app.include_router(notice_router,            prefix=_V1)
+
 
 
 # ── Root / health endpoints ───────────────────────────────────────────────────

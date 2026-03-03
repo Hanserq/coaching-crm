@@ -52,6 +52,39 @@ class Organization(Base, BaseModelMixin):
         return f"<Organization id={self.id} slug={self.slug!r}>"
 
 
+# ── OrgSettings ───────────────────────────────────────────────────────────────
+
+class OrgSettings(Base, BaseModelMixin):
+    """
+    Per-organisation feature-flag store.
+    One row is created (with all defaults True) when an org registers.
+    """
+
+    __tablename__ = "org_settings"
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
+    # ── Module toggles (all default to True / enabled) ────────────────────────
+    mod_attendance:    Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    mod_fees:          Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    mod_leads:         Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    mod_courses:       Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    mod_teachers:      Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    mod_exams:         Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    mod_communication: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    organization: Mapped["Organization"] = relationship("Organization")
+
+    def __repr__(self) -> str:  # pragma: no cover
+        return f"<OrgSettings org={self.organization_id}>"
+
+
 # ── User ──────────────────────────────────────────────────────────────────────
 
 class User(Base, TenantModelMixin):
