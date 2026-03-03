@@ -19,6 +19,8 @@ const CoursesPage = lazy(() => import('./pages/CoursesPage'));
 const TeachersPage = lazy(() => import('./pages/TeachersPage'));
 const ExamsPage = lazy(() => import('./pages/ExamsPage'));
 const CommunicationPage = lazy(() => import('./pages/CommunicationPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 
 // ── Full-screen loading fallback ──────────────────────────────────────────────
 function PageLoader() {
@@ -41,6 +43,8 @@ export default function App() {
           {/* ── Public routes ── */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* ── Protected routes (require JWT) ── */}
           <Route element={<ProtectedRoute />}>

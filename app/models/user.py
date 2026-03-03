@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import enum
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Boolean, Enum, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -111,6 +112,10 @@ class User(Base, TenantModelMixin):
         default=UserRole.TEACHER,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    # ── Password reset ────────────────────────────────────────────────────────
+    reset_token:         Mapped[str | None]      = mapped_column(String(64),  nullable=True)
+    reset_token_expires: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # ── Relationships ─────────────────────────────────────────────────────────
     organization: Mapped["Organization"] = relationship(

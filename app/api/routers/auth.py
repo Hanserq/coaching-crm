@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import JWTError
+from pydantic import BaseModel
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -278,3 +280,64 @@ def invite_user(
     db.commit()
     db.refresh(new_user)
     return UserResponse.model_validate(new_user)
+
+
+# ── Forgot password ───────────────────────────────────────────────────────────
+
+import secrets
+from datetime import datetime, timedelta, timezone
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    token: str
+    new_password: str
+
+
+@router.post("/forgot-password", summary="Generate a password-reset OTP for the email.")
+
+def forgot_password(payload: ForgotPasswordRequest, db: DBSession):
+    user = db.execute(
+        select(User).where(User.email == payload.email)
+    ).scalar_one_or_none()
+    # Always return 200 to avoid email enumeration
+    if not user:
+        return {"message": "If that email exists, a reset token has been generated.", "token": None}
+
+    token = f"{secrets.randbelow(1_000_000):06d}"          # 6-digit OTP
+    user.reset_token = token
+    user.reset_token_expires = datetime.now(timezone.utc) + timedelta(minutes=15)
+    db.add(user)
+    db.commit()
+    # Return token directly (no email service configured yet — admin shares manually)
+    return {
+        "message": "Reset token generated. Share this token with the user.",
+        "token": token,
+        "expires_in_minutes": 15,
+    }
+
+
+@router.post("/reset-password", summary="Reset password using the OTP token.")
+def reset_password(payload: ResetPasswordRequest, db: DBSession):
+    user = db.execute(
+        select(User).where(User.email == payload.email)
+    ).scalar_one_or_none()
+
+    if not user or user.reset_token != payload.token:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token.")
+
+    if user.reset_token_expires is None or datetime.now(timezone.utc) > user.reset_token_expires:
+        raise HTTPException(status_code=400, detail="Reset token has expired. Request a new one.")
+
+    if len(payload.new_password) < 6:
+        raise HTTPException(status_code=422, detail="Password must be at least 6 characters.")
+
+    user.hashed_password = hash_password(payload.new_password)
+    user.reset_token = None
+    user.reset_token_expires = None
+    db.add(user)
+    db.commit()
+    return {"message": "Password has been reset successfully. You can now log in."}
+
