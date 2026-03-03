@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import subprocess
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,9 +14,35 @@ from app.api.routers import courses as courses_router
 from app.api.routers.exams import exam_router, notice_router
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
+
+
+# ── Auto-migrate on startup ───────────────────────────────────────────────────
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Run Alembic migrations when the API process starts."""
+    try:
+        logger.info("Running database migrations...")
+        result = subprocess.run(
+            ["alembic", "upgrade", "head"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode == 0:
+            logger.info("Migrations complete:\n%s", result.stdout)
+        else:
+            logger.error("Migration failed:\n%s", result.stderr)
+    except Exception as exc:
+        logger.error("Could not run migrations: %s", exc)
+    yield  # App is running
+    # (cleanup on shutdown — nothing needed here)
+
+
 # ── App factory ───────────────────────────────────────────────────────────────
 
 app = FastAPI(
+    lifespan=lifespan,
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     docs_url="/docs",
