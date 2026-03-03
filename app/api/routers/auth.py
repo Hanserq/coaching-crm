@@ -373,9 +373,9 @@ def forgot_password(payload: ForgotPasswordRequest, db: DBSession):
 
     # Always return 200 (don't reveal whether email exists)
     if not users:
-        return {{"message": "If that email exists, a reset code has been sent.", "email_sent": False, "token": None}}
+        return {"message": "If that email exists, a reset code has been sent.", "email_sent": False, "token": None}
 
-    otp = f"{{secrets.randbelow(1_000_000):06d}}"   # 6-digit OTP
+    otp = f"{secrets.randbelow(1_000_000):06d}"   # 6-digit OTP
     expires = datetime.now(timezone.utc) + timedelta(minutes=15)
 
     # Apply token to ALL matching users (across orgs) so any can reset
@@ -387,13 +387,13 @@ def forgot_password(payload: ForgotPasswordRequest, db: DBSession):
 
     email_sent = _send_reset_email(payload.email, otp, users[0].full_name)
 
-    return {{
+    return {
         "message": "Reset code sent to email." if email_sent else "Reset token generated.",
         "email_sent": email_sent,
         # Only return token in response when email NOT configured (dev/fallback mode)
         "token": None if email_sent else otp,
         "expires_in_minutes": 15,
-    }}
+    }
 
 
 @router.post("/reset-password", summary="Reset password using the 6-digit OTP.")
@@ -433,4 +433,4 @@ def reset_password(payload: ResetPasswordRequest, db: DBSession):
         u.reset_token_expires = None
         db.add(u)
     db.commit()
-    return {{"message": "Password reset successfully. You can now log in."}}
+    return {"message": "Password reset successfully. You can now log in."}
