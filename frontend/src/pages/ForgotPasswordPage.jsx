@@ -16,8 +16,16 @@ export default function ForgotPasswordPage() {
         setLoading(true); setError('');
         try {
             const { data } = await api.post('/auth/forgot-password', { email });
-            if (data.token) setToken(data.token);
-            else setError('No account found with that email.');
+            if (data.email_sent) {
+                // Real email sent via Resend — show inbox message
+                setToken('EMAIL_SENT');
+            } else if (data.token) {
+                // No email service configured — show code on screen
+                setToken(data.token);
+            } else {
+                // Email not found — show gentle message (don't reveal if exists)
+                setToken('NOT_FOUND');
+            }
         } catch {
             setError('Something went wrong. Please try again.');
         } finally { setLoading(false); }
@@ -75,37 +83,59 @@ export default function ForgotPasswordPage() {
                             </button>
                         </form>
                     ) : (
-                        /* Token revealed */
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-                                <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
-                                <p className="text-xs text-emerald-700 font-medium">Reset code generated!</p>
-                            </div>
-
-                            <div className="bg-gray-50 rounded-2xl p-5 space-y-3 border border-gray-100">
-                                <p className="text-xs text-gray-400 font-medium">Your 6-digit reset code</p>
-                                <div className="flex items-center justify-between gap-3">
-                                    <p className="text-3xl font-black text-brand-600 tracking-widest">{token}</p>
-                                    <button onClick={copyToken} className="btn-ghost !p-2 text-gray-400 hover:text-brand-500">
-                                        {copied ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
-                                    </button>
+                        /* Token / email sent / not found states */
+                        token === 'EMAIL_SENT' ? (
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                                    <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+                                    <p className="text-xs text-emerald-700 font-medium">Reset code sent to your inbox!</p>
                                 </div>
-                                <p className="text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
-                                    ⏰ Expires in 15 minutes
+                                <p className="text-xs text-gray-400 text-center">
+                                    Check your email for the 6-digit code, then click below.
                                 </p>
+                                <Link to={`/reset-password?email=${encodeURIComponent(email)}`}
+                                    className="btn-primary w-full !py-3 !text-sm flex items-center justify-center gap-2">
+                                    Enter Reset Code →
+                                </Link>
                             </div>
+                        ) : token === 'NOT_FOUND' ? (
+                            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center space-y-2">
+                                <p className="text-sm font-medium text-amber-700">If that email exists, a code was sent.</p>
+                                <p className="text-xs text-amber-600">Check your inbox or contact your admin.</p>
+                            </div>
+                        ) : (
 
-                            <p className="text-xs text-gray-400 text-center">
-                                Use this code on the reset password page.
-                            </p>
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                                    <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+                                    <p className="text-xs text-emerald-700 font-medium">Reset code generated!</p>
+                                </div>
 
-                            <Link
-                                to={`/reset-password?email=${encodeURIComponent(email)}&token=${token}`}
-                                className="btn-primary w-full !py-3 !text-sm flex items-center justify-center gap-2"
-                            >
-                                Continue to Reset Password →
-                            </Link>
-                        </div>
+                                <div className="bg-gray-50 rounded-2xl p-5 space-y-3 border border-gray-100">
+                                    <p className="text-xs text-gray-400 font-medium">Your 6-digit reset code</p>
+                                    <div className="flex items-center justify-between gap-3">
+                                        <p className="text-3xl font-black text-brand-600 tracking-widest">{token}</p>
+                                        <button onClick={copyToken} className="btn-ghost !p-2 text-gray-400 hover:text-brand-500">
+                                            {copied ? <Check size={16} className="text-emerald-500" /> : <Copy size={16} />}
+                                        </button>
+                                    </div>
+                                    <p className="text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
+                                        ⏰ Expires in 15 minutes
+                                    </p>
+                                </div>
+
+                                <p className="text-xs text-gray-400 text-center">
+                                    Use this code on the reset password page.
+                                </p>
+
+                                <Link
+                                    to={`/reset-password?email=${encodeURIComponent(email)}&token=${token}`}
+                                    className="btn-primary w-full !py-3 !text-sm flex items-center justify-center gap-2"
+                                >
+                                    Continue to Reset Password →
+                                </Link>
+                            </div>
+                        )
                     )}
                 </div>
             </div>

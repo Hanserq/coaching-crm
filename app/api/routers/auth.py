@@ -126,12 +126,13 @@ def login(
     Note: we intentionally return the same generic error whether the email
     doesn't exist or the password is wrong, to prevent user enumeration.
     """
-    user: User | None = db.execute(
+    # Fetch ALL active users with this email (there may be one per org)
+    candidates = db.execute(
         select(User).where(
             User.email == payload.email,
             User.is_active.is_(True),
         )
-    ).scalar_one_or_none()
+    ).scalars().all()
 
     _INVALID = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -139,7 +140,15 @@ def login(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    if user is None or not verify_password(payload.password, user.hashed_password):
+    if not candidates:
+        raise _INVALID
+
+    # Find the candidate whose password matches
+    user: User | None = next(
+        (u for u in candidates if verify_password(payload.password, u.hashed_password)),
+        None,
+    )
+    if user is None:
         raise _INVALID
 
     return _build_token_response(user)
@@ -282,13 +291,18 @@ def invite_user(
     return UserResponse.model_validate(new_user)
 
 
-# ── Forgot password ───────────────────────────────────────────────────────────
+# ── Forgot / Reset password ───────────────────────────────────────────────────
 
 import secrets
+import urllib.request
+import urllib.error
+import json as _json
 from datetime import datetime, timedelta, timezone
+
 
 class ForgotPasswordRequest(BaseModel):
     email: str
+
 
 class ResetPasswordRequest(BaseModel):
     email: str
@@ -296,48 +310,126 @@ class ResetPasswordRequest(BaseModel):
     new_password: str
 
 
-@router.post("/forgot-password", summary="Generate a password-reset OTP for the email.")
+def _send_reset_email(to_email: str, otp: str, user_name: str) -> bool:
+    """Send OTP via Resend API. Returns True if sent, False if key not configured."""
+    from app.core.config import settings as _s
+    if not _s.RESEND_API_KEY:
+        return False  # No email key — fallback to showing token on screen
 
+    html_body = f"""
+    <div style="font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f9fafb;border-radius:16px">
+      <div style="background:#7c3aed;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px">
+        <h1 style="color:white;margin:0;font-size:22px">Password Reset</h1>
+      </div>
+      <p style="color:#374151;font-size:15px">Hi <strong>{user_name}</strong>,</p>
+      <p style="color:#374151;font-size:15px">Use this 6-digit code to reset your CoachingCRM password:</p>
+      <div style="background:white;border:2px solid #7c3aed;border-radius:12px;padding:24px;text-align:center;margin:24px 0">
+        <span style="font-size:40px;font-weight:900;letter-spacing:10px;color:#7c3aed">{otp}</span>
+      </div>
+      <p style="color:#6b7280;font-size:13px">⏰ This code expires in <strong>15 minutes</strong>.</p>
+      <p style="color:#6b7280;font-size:13px">If you didn't request this, ignore this email safely.</p>
+    </div>
+    """
+
+    payload_data = _json.dumps({{
+        "from": _s.RESEND_FROM_EMAIL,
+        "to": [to_email],
+        "subject": f"Your CoachingCRM reset code: {otp}",
+        "html": html_body,
+    }}).encode()
+
+    try:
+        req = urllib.request.Request(
+            "https://api.resend.com/emails",
+            data=payload_data,
+            headers={{
+                "Authorization": f"Bearer {{_s.RESEND_API_KEY}}",
+                "Content-Type": "application/json",
+            }},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.status in (200, 201)
+    except urllib.error.HTTPError as e:
+        import logging
+        logging.getLogger(__name__).error("Resend failed: %s %s", e.code, e.read())
+        return False
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error("Resend error: %s", e)
+        return False
+
+
+@router.post("/forgot-password", summary="Generate a 6-digit password-reset OTP.")
 def forgot_password(payload: ForgotPasswordRequest, db: DBSession):
-    user = db.execute(
-        select(User).where(User.email == payload.email)
-    ).scalar_one_or_none()
-    # Always return 200 to avoid email enumeration
-    if not user:
-        return {"message": "If that email exists, a reset token has been generated.", "token": None}
+    # Find the most-recently-created active user with this email
+    users = db.execute(
+        select(User).where(
+            User.email == payload.email,
+            User.is_active.is_(True),
+        ).order_by(User.created_at.desc())
+    ).scalars().all()
 
-    token = f"{secrets.randbelow(1_000_000):06d}"          # 6-digit OTP
-    user.reset_token = token
-    user.reset_token_expires = datetime.now(timezone.utc) + timedelta(minutes=15)
-    db.add(user)
+    # Always return 200 (don't reveal whether email exists)
+    if not users:
+        return {{"message": "If that email exists, a reset code has been sent.", "email_sent": False, "token": None}}
+
+    otp = f"{{secrets.randbelow(1_000_000):06d}}"   # 6-digit OTP
+    expires = datetime.now(timezone.utc) + timedelta(minutes=15)
+
+    # Apply token to ALL matching users (across orgs) so any can reset
+    for u in users:
+        u.reset_token = otp
+        u.reset_token_expires = expires
+        db.add(u)
     db.commit()
-    # Return token directly (no email service configured yet — admin shares manually)
-    return {
-        "message": "Reset token generated. Share this token with the user.",
-        "token": token,
+
+    email_sent = _send_reset_email(payload.email, otp, users[0].full_name)
+
+    return {{
+        "message": "Reset code sent to email." if email_sent else "Reset token generated.",
+        "email_sent": email_sent,
+        # Only return token in response when email NOT configured (dev/fallback mode)
+        "token": None if email_sent else otp,
         "expires_in_minutes": 15,
-    }
+    }}
 
 
-@router.post("/reset-password", summary="Reset password using the OTP token.")
+@router.post("/reset-password", summary="Reset password using the 6-digit OTP.")
 def reset_password(payload: ResetPasswordRequest, db: DBSession):
-    user = db.execute(
-        select(User).where(User.email == payload.email)
-    ).scalar_one_or_none()
+    users = db.execute(
+        select(User).where(
+            User.email == payload.email,
+            User.is_active.is_(True),
+        )
+    ).scalars().all()
 
-    if not user or user.reset_token != payload.token:
+    if not users:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token.")
 
-    if user.reset_token_expires is None or datetime.now(timezone.utc) > user.reset_token_expires:
-        raise HTTPException(status_code=400, detail="Reset token has expired. Request a new one.")
+    # Find a matching user with valid token
+    now = datetime.now(timezone.utc)
+    target: User | None = next(
+        (u for u in users
+         if u.reset_token == payload.token
+         and u.reset_token_expires is not None
+         and now <= u.reset_token_expires),
+        None,
+    )
+
+    if target is None:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token.")
 
     if len(payload.new_password) < 6:
         raise HTTPException(status_code=422, detail="Password must be at least 6 characters.")
 
-    user.hashed_password = hash_password(payload.new_password)
-    user.reset_token = None
-    user.reset_token_expires = None
-    db.add(user)
+    # Update password for matched user and clear token for all matching users
+    new_hash = hash_password(payload.new_password)
+    for u in users:
+        if u.id == target.id:
+            u.hashed_password = new_hash
+        u.reset_token = None
+        u.reset_token_expires = None
+        db.add(u)
     db.commit()
-    return {"message": "Password has been reset successfully. You can now log in."}
-
+    return {{"message": "Password reset successfully. You can now log in."}}

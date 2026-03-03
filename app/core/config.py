@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     # Use the `cors_origins_list` property wherever a List[str] is needed.
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
 
+    # ── Email (Resend) ────────────────────────────────────────────────────────
+    RESEND_API_KEY: str = ""          # Set in Railway env variables
+    RESEND_FROM_EMAIL: str = "noreply@coachingcrm.app"   # Sender address
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Return CORS_ORIGINS as a list, splitting on commas."""
@@ -47,6 +51,7 @@ class Settings(BaseSettings):
         """Validate JWT secret length after all fields are populated."""
         if len(self.JWT_SECRET_KEY) < 32:
             raise ValueError("JWT_SECRET_KEY must be at least 32 characters long.")
+
 
 
 @lru_cache
