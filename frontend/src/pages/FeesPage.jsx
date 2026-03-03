@@ -119,8 +119,8 @@ function StudentFeeRow({ student, onPay }) {
         if (!expanded && history.length === 0) {
             setLoading(true);
             try {
-                const { data } = await api.get(`/fees/student/${student.id}`, { params: { page: 1, page_size: 12 } });
-                setHistory(data.items ?? data);
+                const { data } = await api.get(`/fees/student/${student.id}`);
+                setHistory(data.payments ?? []);
             } catch { /* silent */ }
             finally { setLoading(false); }
         }
@@ -211,7 +211,7 @@ export default function FeesPage() {
         setLoading(true);
         setError('');
         try {
-            const { data } = await api.get('/students/', { params: { page: 1, page_size: 200, status: 'active' } });
+            const { data } = await api.get('/students/', { params: { page: 1, page_size: 100, status: 'active' } });
             setStudents(data.items);
         } catch {
             setError('Failed to load students.');

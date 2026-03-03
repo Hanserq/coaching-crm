@@ -10,6 +10,7 @@ import {
     X,
     GraduationCap,
     ChevronRight,
+    Settings,
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
@@ -85,16 +86,26 @@ function Sidebar({ onClose }) {
 
             {/* User footer */}
             <div className="px-3 py-4 border-t border-[var(--color-surface-500)] space-y-1">
-                {/* User info */}
-                <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg">
-                    <div className="w-8 h-8 rounded-full bg-brand-500/30 flex items-center justify-center text-brand-400 font-bold text-sm">
+                {/* User info — click to go to profile */}
+                <NavLink
+                    to="/profile"
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                        [
+                            'flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-150 hover:bg-surface-600 group',
+                            isActive ? 'bg-brand-500/10 ring-1 ring-brand-500/20' : '',
+                        ].join(' ')
+                    }
+                >
+                    <div className="w-8 h-8 rounded-full bg-brand-500/30 flex items-center justify-center text-brand-400 font-bold text-sm shrink-0">
                         {user?.full_name?.[0]?.toUpperCase() ?? 'U'}
                     </div>
                     <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-white truncate">{user?.full_name}</p>
                         <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
                     </div>
-                </div>
+                    <Settings size={14} className="text-slate-600 group-hover:text-slate-400 transition-colors" />
+                </NavLink>
                 {/* Logout */}
                 <button onClick={handleLogout} className="btn-ghost w-full justify-start text-red-400 hover:text-red-300">
                     <LogOut size={16} />
@@ -142,6 +153,7 @@ const ROUTE_TITLES = {
     '/students': 'Students',
     '/attendance': 'Attendance',
     '/fees': 'Fee Payments',
+    '/profile': 'Profile Settings',
 };
 
 // ── Layout (exported) ─────────────────────────────────────────────────────────

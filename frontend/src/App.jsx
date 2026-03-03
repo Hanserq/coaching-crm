@@ -11,6 +11,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const StudentsPage = lazy(() => import('./pages/StudentsPage'));
 const AttendancePage = lazy(() => import('./pages/AttendancePage'));
 const FeesPage = lazy(() => import('./pages/FeesPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 
 // ── Full-screen loading fallback ──────────────────────────────────────────────
 function PageLoader() {
@@ -42,6 +43,7 @@ export default function App() {
               <Route path="/students" element={<StudentsPage />} />
               <Route path="/attendance" element={<AttendancePage />} />
               <Route path="/fees" element={<FeesPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
             </Route>
           </Route>
 

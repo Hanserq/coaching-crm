@@ -66,6 +66,17 @@ class AdminRegisterRequest(BaseModel):
     admin_user: UserCreate
 
 
+class ProfileUpdate(BaseModel):
+    """Payload for updating the current user's own profile."""
+    full_name: str = Field(..., min_length=1, max_length=255)
+
+
+class ChangePasswordRequest(BaseModel):
+    """Payload for changing the authenticated user's password."""
+    current_password: str = Field(..., description="Current (old) password for verification.")
+    new_password: str = Field(..., min_length=8, description="New password — will be hashed before storage.")
+
+
 class UserResponse(_OrmBase):
     """Public representation of a User (no password fields exposed)."""
     id: uuid.UUID

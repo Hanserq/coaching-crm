@@ -16,7 +16,9 @@ from app.core.security import (
 from app.models.user import Organization, User, UserRole
 from app.schemas.user import (
     AdminRegisterRequest,
+    ChangePasswordRequest,
     LoginRequest,
+    ProfileUpdate,
     RefreshTokenRequest,
     TokenResponse,
     UserResponse,
@@ -192,3 +194,43 @@ def refresh_tokens(
 def get_me(current_user: CurrentUser) -> UserResponse:
     """Protected endpoint — requires a valid access token."""
     return UserResponse.model_validate(current_user)
+
+
+@router.patch(
+    "/me",
+    response_model=UserResponse,
+    summary="Update the current user's own profile (full name).",
+)
+def update_me(
+    payload: ProfileUpdate,
+    db: DBSession,
+    current_user: CurrentUser,
+) -> UserResponse:
+    """Allow the authenticated user to update their own full name."""
+    current_user.full_name = payload.full_name
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return UserResponse.model_validate(current_user)
+
+
+@router.post(
+    "/me/change-password",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    summary="Change the current user's password.",
+)
+def change_password(
+    payload: ChangePasswordRequest,
+    db: DBSession,
+    current_user: CurrentUser,
+):
+    """Verifies the current password before setting the new one."""
+    if not verify_password(payload.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect.",
+        )
+    current_user.hashed_password = hash_password(payload.new_password)
+    db.add(current_user)
+    db.commit()

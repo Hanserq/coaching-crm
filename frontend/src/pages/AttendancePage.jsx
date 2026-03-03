@@ -66,13 +66,13 @@ export default function AttendancePage() {
         setError('');
         try {
             const [studRes, attRes] = await Promise.all([
-                api.get('/students/', { params: { page: 1, page_size: 200, status: 'active' } }),
-                api.get('/attendance/', { params: { date } }),
+                api.get('/students/', { params: { page: 1, page_size: 100, status: 'active' } }),
+                api.get('/attendance/daily', { params: { date } }),
             ]);
             setStudents(studRes.data.items);
             // Index attendance records by student_id
             const map = {};
-            (attRes.data.items ?? attRes.data).forEach((r) => { map[r.student_id] = r; });
+            (attRes.data.records ?? []).forEach((r) => { map[r.student_id] = r; });
             setRecords(map);
         } catch {
             setError('Failed to load attendance data.');
